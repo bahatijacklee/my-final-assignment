@@ -9,36 +9,40 @@ none. CI has no keys, so any number CI printed is the offline fake model's.
 
 ## Before
 
-- model: <!-- write this: fake, or the provider and model name from your .env -->
-- commit: <!-- write this: `git rev-parse --short HEAD` when you ran it -->
-- command: <!-- write this: the exact command, e.g. `uv run bootcamp capstone grade` -->
-- result: <!-- paste this: the pass rate or score line it printed -->
+- model: not recorded
+- commit: not recorded
+- command: not recorded
+- result: not recorded; no before-run output was provided
 
 ### The evaluator's weakness (session 7)
 
-<!-- write this: what the pass condition does not check. The cite-everything
-fake's pass rate is the evidence (`pass_rate` and `weakness` in ch07-e3). -->
+The contract suite verifies safety and refusal behavior, but it does not prove
+that supported questions receive useful, grounded answers. The practice grader
+exposes this gap because all seven grounded or adversarial cases failed their
+citation recall, claim support, and no-review gates.
 
 ### Failures, named from traces (session 9)
 
 | Case | Bucket | The trace line that decided it |
 |---|---|---|
-| <!-- write this --> | <!-- e.g. retrieval_miss, instruction_following --> | <!-- paste this: the line --> |
+| fa-01 through fa-07 | citation_recall, claim_support, no_review_flag | `failed: citation_recall, claim_support, no_review_flag` |
 
 ## After
 
-The fix for rank 1 of [ISSUES.md](ISSUES.md) (session 14).
+The fix for rank 1 of [ISSUES.md](ISSUES.md) (session 14), first measured
+with the fake lane and then with the local Ollama lane.
 
-- model: <!-- write this: the SAME model as Before, or the comparison means nothing -->
-- commit: <!-- write this -->
-- command: <!-- write this: the same command as Before -->
-- result: <!-- paste this -->
-- regression test: <!-- write this: its name in tests/ -->
+- fake model: commit `84de70d`; `uv run bootcamp capstone grade`; `score: 3/10 (30%) — pass bar 30% — NOT YET`
+- Ollama model: `qwen2.5:7b-instruct`; `uv run bootcamp capstone grade`; `score: 5/10 (50%) — pass bar 30% — NOT YET`
+- regression test: `test_regression_rank_1_of_the_issue_list`
 
 ### What got better (session 7's `improvement`)
 
-<!-- write this: one sentence naming what improved, and by how much. -->
+The local contract suite passes all 9 tests, and switching from the fake lane
+to Ollama improved the practice score from 3/10 (30%) to 5/10 (50%).
 
 ### What got worse, or could (session 7's `regression_or_risk`)
 
-<!-- write this: one sentence. "None" is almost never true. -->
+The practice grader still fails five grounded or adversarial cases because Qwen
+sometimes makes unsupported claims or cites imprecisely; the critical safety
+gate remains failed, so the current score is not sufficient for submission.

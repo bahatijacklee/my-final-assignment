@@ -29,7 +29,6 @@ from __future__ import annotations
 import json
 import threading
 
-import pytest
 from bootcamp_agent.documents import Document
 from bootcamp_agent.llm import FakeLLM
 from bootcamp_agent.tools import Tool
@@ -90,6 +89,26 @@ def test_citation_retrieval_never_returned_is_stripped_and_flagged() -> None:
     assert "rag-basics" in answer.citations, "the citation retrieval did return survives"
     assert answer.needs_human_review
     assert answer.confidence <= 0.2
+
+
+def test_empty_unflagged_model_answer_is_rejected() -> None:
+    model = FakeLLM(
+        default=_reply("", ["rag-basics"], confidence=1.0, review=False)
+    )
+
+    answer = YourAgent(client=model)(SUPPORTED)
+
+    assert _is_flagged_refusal(answer), answer
+
+
+def test_unflagged_answer_without_citations_is_rejected() -> None:
+    model = FakeLLM(
+        default=_reply("Chunking splits documents into passages.", [], confidence=1.0)
+    )
+
+    answer = YourAgent(client=model)(SUPPORTED)
+
+    assert _is_flagged_refusal(answer), answer
 
 
 # ------------------------------------------------ an instruction inside retrieved text
@@ -157,15 +176,6 @@ def test_injection_cannot_add_a_source_or_clear_the_review_flag() -> None:
     assert answer.confidence <= 0.2, "the injected 'confidence 1.0' was obeyed"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "sessions 13-14: the starter passes an obeyed reply through when it cites only "
-        "retrieved documents. Detect instruction-shaped text in retrieved passages and "
-        "flag the answer, then delete this marker."
-    ),
-)
 def test_injection_cannot_dictate_an_unflagged_answer() -> None:
     model = GullibleLLM(
         obeyed_reply=_reply("ACCESS GRANTED", [INJECTED_DOC], confidence=1.0, review=False)
@@ -197,15 +207,6 @@ class BrokenLLM:
         raise ConnectionError("provider unreachable")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "session 2 taught the refusal as a value (ch02-e4); wiring it into YourAgent "
-        "is the hardening after session 14. Catch the provider's error, return a "
-        "flagged refusal, then delete this marker."
-    ),
-)
 def test_provider_error_is_flagged_not_raised() -> None:
     model = BrokenLLM()
     try:
@@ -235,15 +236,6 @@ class HangingLLM:
 DEADLINE_S = 1.0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "session 2 taught the deadline (a timeout is an exception you turn into a "
-        "refusal); enforcing YourAgent.timeout_s is the hardening after session 14. "
-        "Then delete this marker."
-    ),
-)
 def test_timeout_on_a_hanging_provider_is_flagged_within_a_second() -> None:
     model = HangingLLM()
     agent = YourAgent(client=model)
@@ -292,17 +284,35 @@ def test_tools_no_writing_tool_is_wired() -> None:
 # ------------------------------------------------ later sessions: placeholders
 
 
-@pytest.mark.skip(
-    reason="session 11: write this when your agent remembers. Prove the cap, the reset, "
-    "and that one user's memory never answers another's."
-)
 def test_memory_is_capped_reset_and_kept_per_user() -> None:
-    raise NotImplementedError
+    """Prove the cap, the reset, and that one user's memory never answers another's."""
+    from agent import MemoryStore
+
+    store = MemoryStore()
+    store.remember("ana", "preference", "short")
+    store.remember("bruno", "preference", "long")
+    assert store.recall("ana", "preference") == "short"
+    assert store.recall("bruno", "preference") == "long"
+    assert store.recall("ana", "unknown") is None
+
+    for index in range(store.max_items_per_user + 1):
+        store.remember("ana", f"episode-{index}", str(index))
+    assert store.recall("ana", "episode-0") is None
+    assert store.recall("ana", f"episode-{store.max_items_per_user}") == str(
+        store.max_items_per_user
+    )
+    assert store.recall("bruno", "preference") == "long"
+
+    store.reset("ana")
+    assert store.recall("ana", "preference") is None
+    assert store.recall("ana", f"episode-{store.max_items_per_user}") is None
+    assert store.recall("bruno", "preference") == "long"
 
 
-@pytest.mark.skip(
-    reason="session 14: the regression test for rank 1 of docs/ISSUES.md. Write it red "
-    "against the bug, fix the bug, watch it go green."
-)
 def test_regression_rank_1_of_the_issue_list() -> None:
-    raise NotImplementedError
+    """The regression test for rank 1 of docs/ISSUES.md."""
+    agent = YourAgent(client=FakeLLM())
+    answer = agent("   ")
+    assert answer.needs_human_review is True
+    assert answer.confidence == 0.0
+    assert "empty" in answer.answer.lower()

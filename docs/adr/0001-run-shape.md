@@ -1,33 +1,33 @@
 # ADR 0001: the shape of one run
 
-**Filled by:** session 10, for the choice you measured in session 8 (chain,
-loop or graph, and the model calls each one cost). The four fields are the
-ones `ch10-e2` reads.
+**Filled by:** session 10, for the choice measured in session 8.
 
-- Status: <!-- write this: proposed | accepted | superseded by ADR NNNN -->
-- Date: <!-- write this -->
+- Status: accepted
+- Date: 2026-10-05
 
 ## Context
 
-<!-- write this: what forced a choice, and the model-call count you measured
-for each shape in session 8. -->
+We needed a deterministic request boundary that balances speed with tool-calling
+capabilities. Session 8 measurements showed a strict chain costs exactly one
+model call but fails on missing data, while an unconstrained graph can spin
+indefinitely. A loop with a strict budget costs one to three calls and provides
+a safe fallback.
 
 ## Decision (`decision`)
 
-<!-- write this: one sentence phrased as a choice ("we keep the chain in
-agent.py"), not as a description of the code. -->
+We keep the loop architecture with a strict tool-call budget in `agent.py`.
 
 ## Options considered (`options_considered`)
 
-1. <!-- write this: the option you took -->
-2. <!-- write this: the option you turned down -->
+1. A bounded loop with a maximum of three tool calls.
+2. A static chain with one fixed retrieval call.
 
 ## Why not the other option (`why_not`)
 
-<!-- write this: the reason it lost, today. The reason, not the verdict. -->
+The static chain cannot recover from an empty initial retrieval or adapt to
+multi-step requests.
 
 ## What would reverse it (`reverses_it`)
 
-<!-- write this: a measurement with a number and a unit, e.g. "when a question
-needs more than 2 model calls in 10 of the golden cases". "When it gets slow" is
-an opinion, not a trigger. -->
+When a question needs more than three model calls to fetch sufficient context
+in 15 of the golden cases, requiring a budget increase.

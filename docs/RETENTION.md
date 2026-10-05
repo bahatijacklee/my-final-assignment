@@ -1,18 +1,18 @@
 # Retention policy
 
-**Filled by:** session 11. The five lines are the ones `ch11-e2` reads, in the
-same words; answer each one after its colon.
+STORED: Explicit string preferences, scoped by user ID, with at most 10 entries per user.
 
-STORED: <!-- write this: exactly what a session keeps, e.g. preferences and the last N episodes -->
+WHY: To preserve user-specific preferences without allowing one user's memory to answer another's.
 
-WHY: <!-- write this: what each stored thing is used for -->
+CORRECTED BY: The user can overwrite a preference or reset all stored values for that user.
 
-CORRECTED BY: <!-- write this: how a user fixes or clears what was stored -->
+EXPIRES: Values remain until overwritten or reset; the per-user cap is 10 entries.
 
-EXPIRES: <!-- write this: when it is deleted, with a number and a unit, and the cap -->
-
-WE REFUSE TO REMEMBER: <!-- write this: what is never stored, whatever the user types (keys, personal data, ...) -->
+WE REFUSE TO REMEMBER: API keys, credentials, and other secrets.
 
 ## How the code enforces it
 
-<!-- write this: the test in tests/ that proves the cap and the reset. -->
+`MemoryStore` in `agent.py` scopes values by user ID, enforces its configured
+per-user cap, and exposes `reset()`. The
+`test_memory_is_capped_reset_and_kept_per_user` test verifies user isolation,
+oldest-entry eviction at the cap, missing-key behavior, and per-user reset.

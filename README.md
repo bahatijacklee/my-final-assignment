@@ -1,15 +1,19 @@
 # my-final-assignment
 
-<!-- write this: one sentence. What it answers, from what, and what it does when
-the sources say nothing. -->
-
-<!-- add the CI badge once the repository exists:
-![check](https://github.com/<your-github-username>/my-final-assignment/actions/workflows/check.yml/badge.svg) -->
+This agent answers developer questions about retrieval, agent loops, MCP, prompt
+injection, structured outputs, and evaluation using six versioned course
+documents. It retrieves relevant passages, asks a model for a structured answer,
+checks citations and safety boundaries, and flags a refusal when the corpus does
+not support an answer.
 
 ## The problem
 
-<!-- write this: who has the problem, and what goes wrong for them today. Two to
-four sentences: minute 1 of your demo, in writing. -->
+Developers learning to build reliable AI agents need concise answers grounded in
+the course material, but a general-purpose model may invent details, follow
+instructions hidden inside retrieved text, or answer questions outside the
+available sources. This agent gives learners a source-backed research assistant
+for the six course topics, names its supporting documents, and produces a
+human-reviewable refusal when evidence is missing or unsafe.
 
 ## Demo
 
@@ -23,8 +27,14 @@ uv run bootcamp capstone trace "How does chunking work in RAG?"
 ```
 
 ```text
-<!-- paste this: the output. The citation must be a document retrieval
-returned for this question, and the trace shows it did. -->
+[retrieve] top_k=3 -> [('rag-basics', 1), ('rag-basics', 2), ('evaluation-basics', 0)]
+[llm_call] attempt 1: 280 chars
+[decision] answered with citations ['rag-basics']
+
+answer: Chunking in RAG splits documents into passages that are small enough to be individually relevant, respecting paragraph boundaries instead of cutting at a fixed character count mid-sentence.
+citations: ['rag-basics']
+confidence: 1.0
+needs_human_review: False
 ```
 
 ### One refusal
@@ -34,18 +44,25 @@ uv run bootcamp capstone trace "What is the capital city of Mongolia?"
 ```
 
 ```text
-<!-- paste this: the output. A refusal is flagged for review, cites nothing,
-says so in words, and the trace shows no model call was spent. -->
+[decision] no relevant chunks; refusing without an LLM call
+
+answer: I don't know based on the provided corpus.
+citations: []
+confidence: 0.0
+needs_human_review: True
 ```
 
 ## Architecture
 
-<!-- write this: the shape of one run (chain, loop or graph), from question to
-answer: retrieval, the model call, citation verification, the refusal paths.
-Name the model calls one question costs. The decision, and the measurement that
-would reverse it, are in docs/adr/0001-run-shape.md. -->
+Each run validates the question, retrieves up to three relevant chunks, and
+passes the read-only context to a bounded model pipeline. A supported question
+normally costs one model call, with the course pipeline allowed a corrective
+retry when structured output cannot be parsed. The result passes through
+citation, answer-integrity, and prompt-injection checks; empty retrieval,
+provider errors, timeouts, invalid answers, and unsafe retrieved instructions
+become flagged refusals. The run shape and reversal measurement are documented
+in [docs/adr/0001-run-shape.md](docs/adr/0001-run-shape.md).
 
-See [docs/adr/0001-run-shape.md](docs/adr/0001-run-shape.md).
 
 ## Measured results
 
@@ -55,15 +72,16 @@ fake model's.
 
 | What | Command | Model | Result |
 |---|---|---|---|
-| Contract tests | `uv run pytest` | fake | <!-- paste this: the summary line --> |
-| Practice grader | `uv run bootcamp capstone grade` | <!-- write this --> | <!-- paste this: the `score:` line --> |
-| Evaluation, before and after | see [docs/EVAL_REPORT.md](docs/EVAL_REPORT.md) | <!-- write this --> | <!-- paste this: the two pass rates --> |
+| Contract tests | `uv run pytest` | fake | `11 passed` |
+| Practice grader | `uv run bootcamp capstone grade` | Ollama `qwen2.5:7b-instruct` | `score: 5/10 (50%) — pass bar 30% — NOT YET` |
+| Evaluation, before and after | see [docs/EVAL_REPORT.md](docs/EVAL_REPORT.md) | fake → Ollama Qwen | `3/10 (30%) → 5/10 (50%)` |
 
 ## The honest limitation
 
-<!-- write this: rank 1 of docs/ISSUES.md in one sentence, and the next step
-you would take. Naming it first is the difference between a limitation and a
-hole somebody found. -->
+The current limitation is that a local model can still make unsupported claims
+or choose imprecise citations on multi-part questions; the next step is to
+measure the post-answer grounding gate against the full practice set and
+improve refusal calibration without hard-coding evaluation questions.
 
 The full ranked list is in [docs/ISSUES.md](docs/ISSUES.md).
 
@@ -84,20 +102,14 @@ first, then answers the final questions and opens the pull request.
 
 ## Sources
 
-<!-- optional. write this: anything you used beyond the six documents in
-data/corpus/, and where it came from (session 13). Delete the section if none. -->
-
-## Credits
-
-<!-- optional. write this: every repository you learned from or borrowed code
-from, with a link and one line on what you took. Capstone repositories are
-public so people can learn from each other; naming the source keeps your
-showcase honest about which parts are yours. Delete the section if none. -->
+The runtime uses the course-provided `bootcamp_agent` package for document
+loading, retrieval, structured-answer parsing, and provider configuration.
 
 ## Rollback
 
-<!-- optional. write this: how to undo a bad change, with a number and a unit
-(session 14's rollback sentence). Delete the section if you have none yet. -->
+If a change lowers the practice score or breaks a contract test, revert the
+single implementation commit and rerun `uv run pytest` plus
+`uv run bootcamp capstone grade` before proceeding.
 
 ---
 
